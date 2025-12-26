@@ -1,17 +1,25 @@
 package org.example;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-public class Main {
-    static void main() {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        IO.println(String.format("Hello and welcome!"));
+import io.quarkus.runtime.Quarkus;
+import io.quarkus.runtime.QuarkusApplication;
+import io.quarkus.runtime.annotations.QuarkusMain;
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            IO.println("i = " + i);
-        }
+/**
+ * Hauptklasse für die Quarkus-Anwendung
+ */
+@QuarkusMain
+public class Main implements QuarkusApplication {
+
+    public static void main(String... args) {
+        System.out.println("Starting Calculator Application...");
+        Quarkus.run(Main.class, args);
+    }
+
+    @Override
+    public int run(String... args) throws Exception {
+        System.out.println("Calculator Application is running!");
+        System.out.println("Data collection scheduler is active and will run every 10 seconds.");
+        Quarkus.waitForExit();
+        return 0;
     }
 }

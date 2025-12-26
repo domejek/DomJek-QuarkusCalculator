@@ -39,6 +39,12 @@
             <artifactId>quarkus-arc</artifactId>
         </dependency>
 
+        <!-- Quarkus REST (RESTEasy Reactive) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-resteasy-reactive</artifactId>
+        </dependency>
+
         <!-- Quarkus REST Client -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -49,12 +55,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-scheduler</artifactId>
-        </dependency>
-
-        <!-- Quarkus REST -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest</artifactId>
         </dependency>
 
         <!-- InfluxDB Client -->

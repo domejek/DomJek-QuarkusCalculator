@@ -1,33 +1,28 @@
 package org.example.service;
 
-import com.example.model.SensorData;
+import org.example.model.SensorData;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class DataFetchService {
 
-    private static final Logger LOG = Logger.getLogger(DataFetchService.class);
+    private static final Logger LOG = Logger.getLogger(DataFetchService.class.getName());
 
-    @ConfigProperty(name = "data.source.url")
+    @ConfigProperty(name = "data.source.url", defaultValue = "https://www.random.org/integers/?num=5&min=1&max=100&col=1&base=10&format=plain&rnd=new")
     String dataSourceUrl;
 
-    /**
-     * Ruft Daten von einer öffentlichen API ab
-     * @return SensorData mit 5 Rohwerten
-     */
     public SensorData fetchData() {
         try {
-            LOG.debug("Fetching data from: " + dataSourceUrl);
+            LOG.info("Fetching data from: " + dataSourceUrl);
 
             URL url = new URL(dataSourceUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -36,38 +31,40 @@ public class DataFetchService {
             connection.setReadTimeout(5000);
 
             int responseCode = connection.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                BufferedReader in = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream())
-                );
-
-                List<Double> values = new ArrayList<>();
-                String line;
-
-                while ((line = in.readLine()) != null && values.size() < 5) {
-                    try {
-                        double value = Double.parseDouble(line.trim());
-                        values.add(value);
-                    } catch (NumberFormatException e) {
-                        LOG.warn("Could not parse value: " + line);
-                    }
-                }
-                in.close();
-
-                if (values.size() == 5) {
-                    SensorData data = new SensorData(Instant.now(), values);
-                    LOG.info("Successfully fetched 5 values: " + values);
-                    return data;
-                } else {
-                    LOG.error("Expected 5 values but got " + values.size());
-                    return null;
-                }
-            } else {
-                LOG.error("HTTP request failed with response code: " + responseCode);
+            if (responseCode != 200) {
+                LOG.warning("HTTP error code: " + responseCode);
                 return null;
             }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream())
+            );
+
+            List<Double> rawValues = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null && rawValues.size() < 5) {
+                try {
+                    double value = Double.parseDouble(line.trim());
+                    rawValues.add(value);
+                } catch (NumberFormatException e) {
+                    LOG.warning("Could not parse value: " + line);
+                }
+            }
+            reader.close();
+
+            if (rawValues.size() == 5) {
+                SensorData data = new SensorData();
+                data.setRawValues(rawValues);
+                LOG.info("Successfully fetched " + rawValues.size() + " values: " + rawValues);
+                return data;
+            } else {
+                LOG.warning("Expected 5 values but got " + rawValues.size());
+                return null;
+            }
+
         } catch (Exception e) {
-            LOG.error("Error fetching data from API", e);
+            LOG.severe("Error fetching data: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }

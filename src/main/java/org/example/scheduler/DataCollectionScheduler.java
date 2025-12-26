@@ -1,18 +1,19 @@
 package org.example.scheduler;
 
-import com.example.model.SensorData;
-import com.example.service.CalculationService;
-import com.example.service.DataFetchService;
-import com.example.service.InfluxDBService;
+import org.example.model.SensorData;
+import org.example.service.DataFetchService;
+import org.example.service.CalculationService;
+import org.example.service.InfluxDBService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
+
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class DataCollectionScheduler {
 
-    private static final Logger LOG = Logger.getLogger(DataCollectionScheduler.class);
+    private static final Logger LOG = Logger.getLogger(DataCollectionScheduler.class.getName());
 
     @Inject
     DataFetchService dataFetchService;
@@ -23,32 +24,27 @@ public class DataCollectionScheduler {
     @Inject
     InfluxDBService influxDBService;
 
-    /**
-     * Wird alle 10 Sekunden ausgeführt
-     */
-    @Scheduled(cron = "{scheduler.cron}")
-    void collectAndProcessData() {
-        LOG.info("===== Starting data collection cycle =====");
+    @Scheduled(every = "10s")
+    public void collectData() {
+        LOG.info("=== Starting data collection cycle ===");
 
         try {
-            // Schritt 1: Daten von API abrufen
             SensorData data = dataFetchService.fetchData();
 
             if (data == null) {
-                LOG.error("Failed to fetch data from API");
+                LOG.warning("Failed to fetch data, skipping this cycle");
                 return;
             }
 
-            // Schritt 2: Berechnungen durchführen
-            calculationService.processData(data);
+            calculationService.performCalculations(data);
 
-            // Schritt 3: In InfluxDB speichern
-            influxDBService.writeData(data);
+            influxDBService.saveSensorData(data);
 
-            LOG.info("===== Data collection cycle completed successfully =====");
+            LOG.info("=== Data collection cycle completed successfully ===");
 
         } catch (Exception e) {
-            LOG.error("Error during data collection cycle", e);
+            LOG.severe("Error during data collection: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

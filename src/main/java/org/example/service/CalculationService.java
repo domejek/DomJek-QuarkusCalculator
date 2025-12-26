@@ -1,71 +1,62 @@
 package org.example.service;
 
-import com.example.model.SensorData;
+import org.example.model.SensorData;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class CalculationService {
 
-    private static final Logger LOG = Logger.getLogger(CalculationService.class);
+    private static final Logger LOG = Logger.getLogger(CalculationService.class.getName());
 
-    /**
-     * Berechnet den Mittelwert aus den Rohwerten
-     * @param data SensorData mit Rohwerten
-     */
-    public void calculateAverage(SensorData data) {
+    public double calculateAverage(SensorData data) {
         if (data == null || data.getRawValues() == null || data.getRawValues().isEmpty()) {
-            LOG.warn("Cannot calculate average: data is null or empty");
-            return;
+            LOG.warning("No data to calculate average");
+            return 0.0;
         }
 
         List<Double> values = data.getRawValues();
         double sum = 0.0;
-
-        for (Double value : values) {
+        for (double value : values) {
             sum += value;
         }
 
         double average = sum / values.size();
-        data.setAverage(average);
-
-        LOG.debug("Calculated average: " + average + " from values: " + values);
+        LOG.info("Calculated average: " + average + " from " + values.size() + " values");
+        return average;
     }
 
-    /**
-     * Berechnet die Abweichungen vom Mittelwert
-     * @param data SensorData mit Rohwerten und Mittelwert
-     */
-    public void calculateDeviations(SensorData data) {
-        if (data == null || data.getRawValues() == null || data.getAverage() == null) {
-            LOG.warn("Cannot calculate deviations: missing data or average");
-            return;
+    public List<Double> calculateDeviations(SensorData data, double average) {
+        if (data == null || data.getRawValues() == null || data.getRawValues().isEmpty()) {
+            LOG.warning("No data to calculate deviations");
+            return new ArrayList<>();
         }
 
         List<Double> deviations = new ArrayList<>();
-        double average = data.getAverage();
-
-        for (Double rawValue : data.getRawValues()) {
-            double deviation = rawValue - average;
+        for (double value : data.getRawValues()) {
+            double deviation = value - average;
             deviations.add(deviation);
         }
 
-        data.setDeviations(deviations);
-
-        LOG.debug("Calculated deviations: " + deviations);
+        LOG.info("Calculated " + deviations.size() + " deviations: " + deviations);
+        return deviations;
     }
 
-    /**
-     * Führt alle Berechnungen durch
-     * @param data SensorData mit Rohwerten
-     */
-    public void processData(SensorData data) {
-        calculateAverage(data);
-        calculateDeviations(data);
+    public void performCalculations(SensorData data) {
+        if (data == null) {
+            LOG.warning("Cannot perform calculations on null data");
+            return;
+        }
 
-        LOG.info("Processed data: " + data);
+        double average = calculateAverage(data);
+        data.setAverage(average);
+
+        List<Double> deviations = calculateDeviations(data, average);
+        data.setDeviations(deviations);
+
+        LOG.info("All calculations completed for data: " + data);
     }
 }

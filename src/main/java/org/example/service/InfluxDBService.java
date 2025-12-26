@@ -1,6 +1,6 @@
 package org.example.service;
 
-import com.example.model.SensorData;
+import org.example.model.SensorData;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.WriteApiBlocking;
@@ -10,103 +10,101 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class InfluxDBService {
 
-    private static final Logger LOG = Logger.getLogger(InfluxDBService.class);
+    private static final Logger LOG = Logger.getLogger(InfluxDBService.class.getName());
 
     @ConfigProperty(name = "influxdb.url")
     String influxUrl;
 
     @ConfigProperty(name = "influxdb.token")
-    String influxToken;
+    String token;
 
     @ConfigProperty(name = "influxdb.org")
-    String influxOrg;
+    String org;
 
     @ConfigProperty(name = "influxdb.bucket")
-    String influxBucket;
+    String bucket;
 
     private InfluxDBClient influxDBClient;
     private WriteApiBlocking writeApi;
 
     @PostConstruct
-    void initialize() {
+    public void init() {
         try {
             LOG.info("Initializing InfluxDB connection to: " + influxUrl);
-            influxDBClient = InfluxDBClientFactory.create(influxUrl, influxToken.toCharArray(), influxOrg, influxBucket);
+            influxDBClient = InfluxDBClientFactory.create(influxUrl, token.toCharArray(), org, bucket);
             writeApi = influxDBClient.getWriteApiBlocking();
             LOG.info("InfluxDB connection established successfully");
         } catch (Exception e) {
-            LOG.error("Failed to initialize InfluxDB connection", e);
+            LOG.severe("Failed to initialize InfluxDB: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     @PreDestroy
-    void cleanup() {
+    public void cleanup() {
         if (influxDBClient != null) {
-            LOG.info("Closing InfluxDB connection");
             influxDBClient.close();
+            LOG.info("InfluxDB connection closed");
         }
     }
 
-    /**
-     * Schreibt die Sensordaten in InfluxDB
-     * @param data SensorData mit allen berechneten Werten
-     */
-    public void writeData(SensorData data) {
-        if (data == null) {
-            LOG.warn("Cannot write null data to InfluxDB");
+    public void saveSensorData(SensorData data) {
+        if (data == null || writeApi == null) {
+            LOG.warning("Cannot save null data or writeApi not initialized");
             return;
         }
 
         try {
             Instant timestamp = data.getTimestamp();
+            List<Double> rawValues = data.getRawValues();
+            double average = data.getAverage();
+            List<Double> deviations = data.getDeviations();
 
-            // Schreibe Rohwerte (measurement: raw)
-            if (data.getRawValues() != null) {
-                for (int i = 0; i < data.getRawValues().size(); i++) {
+            // Speichere Rohwerte
+            if (rawValues != null && !rawValues.isEmpty()) {
+                LOG.fine("Saving " + rawValues.size() + " raw values");
+                for (int i = 0; i < rawValues.size(); i++) {
                     Point point = Point.measurement("raw")
                             .addTag("sensor", "sensor_" + (i + 1))
-                            .addField("value", data.getRawValues().get(i))
+                            .addField("value", rawValues.get(i))
                             .time(timestamp, WritePrecision.NS);
-
                     writeApi.writePoint(point);
                 }
-                LOG.debug("Wrote " + data.getRawValues().size() + " raw values to InfluxDB");
+                LOG.info("Saved " + rawValues.size() + " raw values to InfluxDB");
             }
 
-            // Schreibe Mittelwert (measurement: average)
-            if (data.getAverage() != null) {
-                Point avgPoint = Point.measurement("average")
-                        .addField("value", data.getAverage())
-                        .time(timestamp, WritePrecision.NS);
+            // Speichere Durchschnitt
+            LOG.fine("Saving average value: " + average);
+            Point avgPoint = Point.measurement("average")
+                    .addField("value", average)
+                    .time(timestamp, WritePrecision.NS);
+            writeApi.writePoint(avgPoint);
+            LOG.info("Saved average value: " + average);
 
-                writeApi.writePoint(avgPoint);
-                LOG.debug("Wrote average value to InfluxDB: " + data.getAverage());
-            }
-
-            // Schreibe Abweichungen (measurement: deviation)
-            if (data.getDeviations() != null) {
-                for (int i = 0; i < data.getDeviations().size(); i++) {
+            // Speichere Abweichungen
+            if (deviations != null && !deviations.isEmpty()) {
+                LOG.fine("Saving " + deviations.size() + " deviation values");
+                for (int i = 0; i < deviations.size(); i++) {
                     Point point = Point.measurement("deviation")
                             .addTag("sensor", "sensor_" + (i + 1))
-                            .addField("value", data.getDeviations().get(i))
+                            .addField("value", deviations.get(i))
                             .time(timestamp, WritePrecision.NS);
-
                     writeApi.writePoint(point);
                 }
-                LOG.debug("Wrote " + data.getDeviations().size() + " deviation values to InfluxDB");
+                LOG.info("Saved " + deviations.size() + " deviation values to InfluxDB");
             }
 
-            LOG.info("Successfully wrote all data to InfluxDB at timestamp: " + timestamp);
-
         } catch (Exception e) {
-            LOG.error("Error writing data to InfluxDB", e);
+            LOG.severe("Error saving data to InfluxDB: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
