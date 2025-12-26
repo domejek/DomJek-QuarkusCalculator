@@ -23,10 +23,6 @@ public class SensorData {
         this.timestamp = Instant.now();
     }
 
-<<<<<<< HEAD
-=======
-    // Getter und Setter
->>>>>>> 067a69547868743e1eaafb63af5e9a9f23f64dcc
     public List<Double> getRawValues() {
         return rawValues;
     }
