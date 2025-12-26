@@ -3,30 +3,27 @@ package org.example.model;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Datenmodell für Sensordaten
+ */
 public class SensorData {
-    private Instant timestamp;
     private List<Double> rawValues;
-    private Double average;
+    private double average;
     private List<Double> deviations;
+    private Instant timestamp;
 
     public SensorData() {
         this.timestamp = Instant.now();
     }
 
-    public SensorData(Instant timestamp, List<Double> rawValues) {
-        this.timestamp = timestamp;
+    public SensorData(List<Double> rawValues, double average, List<Double> deviations) {
         this.rawValues = rawValues;
+        this.average = average;
+        this.deviations = deviations;
+        this.timestamp = Instant.now();
     }
 
-    // Getters and Setters
-    public Instant getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
-    }
-
+    // Getter und Setter
     public List<Double> getRawValues() {
         return rawValues;
     }
@@ -35,11 +32,11 @@ public class SensorData {
         this.rawValues = rawValues;
     }
 
-    public Double getAverage() {
+    public double getAverage() {
         return average;
     }
 
-    public void setAverage(Double average) {
+    public void setAverage(double average) {
         this.average = average;
     }
 
@@ -51,13 +48,21 @@ public class SensorData {
         this.deviations = deviations;
     }
 
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
+
     @Override
     public String toString() {
         return "SensorData{" +
-                "timestamp=" + timestamp +
-                ", rawValues=" + rawValues +
+                "rawValues=" + rawValues +
                 ", average=" + average +
                 ", deviations=" + deviations +
+                ", timestamp=" + timestamp +
                 '}';
     }
 }
