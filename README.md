@@ -10,21 +10,42 @@ Dieses Projekt ruft alle 10 Sekunden 5 Werte von einer öffentlichen API ab, ber
 
 ## Projekt-Setup
 
-### 1. InfluxDB starten
+### 🔧 .env Konfiguration
+
+Bevor Sie starten, erstellen/kopieren Sie die `.env` Datei:
 
 ```bash
-docker-compose up -d
+cp .env.example .env  # Falls .env.example existiert
+# Oder direkt bearbeiten:
+nano .env
 ```
 
-InfluxDB läuft dann auf `http://localhost:8086` mit folgenden Zugangsdaten:
-- **Username**: admin
-- **Password**: adminpassword
-- **Organization**: myorg
-- **Bucket**: calculator
-- **Token**: my-super-secret-auth-token
+**Wichtige Variablen in `.env`:**
+- `INFLUXDB_TOKEN` - Ihr persönlicher InfluxDB Token
+- `INFLUXDB_ORG` - Organisation Name
+- `INFLUXDB_BUCKET` - Bucket Name
+- `DATA_SOURCE_URL` - API für Datenquelle
 
-### 2. Quarkus-Anwendung starten
+### 🚀 Automatischer Start mit Docker Compose
 
+```bash
+docker-compose up --build
+```
+
+Dadurch werden beide Services gestartet:
+- **InfluxDB**: Port 8086 - Datenbank für Zeitreihendaten
+- **Calculator App**: Port 8080 - Quarkus Anwendung mit Scheduler
+
+Die Quarkus Anwendung startet automatisch, sobald die InfluxDB bereit ist.
+
+### Manueller Start (für Entwicklung)
+
+#### 1. InfluxDB starten
+```bash
+docker-compose up -d influxdb
+```
+
+#### 2. Quarkus-Anwendung starten
 ```bash
 ./mvnw clean quarkus:dev
 ```
@@ -33,6 +54,15 @@ Oder bei Windows:
 ```bash
 mvnw.cmd clean quarkus:dev
 ```
+
+## Zugangsdaten
+
+- **InfluxDB**: `http://localhost:8086`
+- **Username**: admin
+- **Password**: adminpassword
+- **Organization**: myorg
+- **Bucket**: calculator
+- **Token**: my-super-secret-auth-token
 
 ## Funktionsweise
 
@@ -51,10 +81,18 @@ mvnw.cmd clean quarkus:dev
 
 ### Daten abfragen (Data Explorer)
 
+Alle Measurements:
 ```flux
 from(bucket: "calculator")
   |> range(start: -1h)
-  |> filter(fn: (r) => r._measurement == "raw" or r._measurement == "average" or r._measurement == "deviation")
+  |> filter(fn: (r) => r._measurement == "raw" or r._measurement == "average" or r._measurement == "deviation" or r._measurement == "sum_average" or r._measurement == "sum_deviation")
+```
+
+Nur kumulative Summen:
+```flux
+from(bucket: "calculator")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "sum_average" or r._measurement == "sum_deviation")
 ```
 
 ## Projektstruktur
@@ -84,17 +122,32 @@ In `src/main/resources/application.properties`:
 - **Intervall ändern**: `scheduler.cron` (aktuell: `*/10 * * * * ?` = alle 10 Sekunden)
 - **InfluxDB-Verbindung**: `influxdb.*` Eigenschaften
 
+## Health Checks
+
+- **InfluxDB**: `http://localhost:8086/health`
+- **Calculator App**: `http://localhost:8080/q/health`
+
 ## Stoppen
 
 ```bash
-# Quarkus: Ctrl+C im Terminal
-
-# InfluxDB stoppen:
+# Beide Services stoppen:
 docker-compose down
 
-# InfluxDB mit Daten löschen:
+# Services mit Daten löschen:
 docker-compose down -v
+
+# Logs anzeigen:
+docker-compose logs -f calculator-app
+docker-compose logs -f influxdb
 ```
+
+## Verbesserungen für Docker-Umgebung
+
+- **Automatische Abhängigkeitsauflösung**: Calculator App wartet auf InfluxDB
+- **Retry-Logik**: Mehrere Versuche bei Verbindungsfehlern
+- **Health Checks**: Überwachung der Service-Gesundheit
+- **Environment-Variablen**: Flexible Konfiguration für Docker
+- **Robuste Fehlerbehandlung**: Bessere Logging und Wiederholungsversuche
 
 ## Troubleshooting
 

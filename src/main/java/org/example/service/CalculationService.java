@@ -5,12 +5,18 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Logger;
 
 @ApplicationScoped
 public class CalculationService {
 
     private static final Logger LOG = Logger.getLogger(CalculationService.class.getName());
+
+    // Thread-safe cumulative sums
+    private volatile double sumAverage = 0.0;
+    private volatile double sumDeviation = 0.0;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     public double calculateAverage(SensorData data) {
         if (data == null || data.getRawValues() == null || data.getRawValues().isEmpty()) {
@@ -57,6 +63,48 @@ public class CalculationService {
         List<Double> deviations = calculateDeviations(data, average);
         data.setDeviations(deviations);
 
+        // Update cumulative sums
+        updateCumulativeSums(average, deviations);
+
+        // Set cumulative sums in data object for InfluxDB
+        data.setSumAverage(getSumAverage());
+        data.setSumDeviation(getSumDeviation());
+
         LOG.info("All calculations completed for data: " + data);
+    }
+
+    private void updateCumulativeSums(double average, List<Double> deviations) {
+        lock.writeLock().lock();
+        try {
+            sumAverage += average;
+            
+            double deviationSum = 0.0;
+            for (double deviation : deviations) {
+                deviationSum += Math.abs(deviation);
+            }
+            sumDeviation += deviationSum;
+            
+            LOG.info("Updated cumulative sums - sumAverage: " + sumAverage + ", sumDeviation: " + sumDeviation);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public double getSumAverage() {
+        lock.readLock().lock();
+        try {
+            return sumAverage;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public double getSumDeviation() {
+        lock.readLock().lock();
+        try {
+            return sumDeviation;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 }

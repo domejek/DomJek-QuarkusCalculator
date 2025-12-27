@@ -51,6 +51,12 @@
             <artifactId>quarkus-rest-client-jackson</artifactId>
         </dependency>
 
+        <!-- SmallRye Health -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+
         <!-- Quarkus Scheduler -->
         <dependency>
             <groupId>io.quarkus</groupId>
